@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Planning Étudiant Intelligent</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Configuration PWA & Manifest Intégré -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Omnitime">
+    <style>
+        .pattern-partiel {
+            background-image: linear-gradient(135deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent);
+            background-size: 16px 16px;
+        }
+        .pattern-cm {
+            background-image: radial-gradient(rgba(255,255,255,0.25) 1.5px, transparent 1.5px);
+            background-size: 10px 10px;
+        }
+        .pattern-td {
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(255,255,255,0.2) 7px, rgba(255,255,255,0.2) 9px);
+        }
+        .pattern-tp {
+            background-image: linear-gradient(0deg, rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px);
+            background-size: 12px 12px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <header class="bg-indigo-600 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/15 p-2.5 rounded-xl">
+                    <i class="fa-solid fa-calendar-days text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">OMNITIME</h1>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="notif-btn" onclick="requestNotificationPermission()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-bell"></i> Activer alertes
+                </button>
+                <button onclick="exportData()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-arrow-down"></i> Exporter
+                </button>
+                <label class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-file-arrow-up"></i> Importer
+                    <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+                </label>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 flex gap-2 border-t border-indigo-500/50 overflow-x-auto">
+            <button onclick="switchTab('edt')" id="tab-edt" class="px-4 py-3 text-sm font-medium border-b-2 border-white text-white transition flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-calendar"></i> Emploi du Temps
+            </button>
+            <button onclick="switchTab('tasks')" id="tab-tasks" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-indigo-200 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-list-check"></i> Tâches & Devoirs
+            </button>
+            <button onclick="switchTab('subjects')" id="tab-subjects" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-indigo-200 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-book"></i> Matières & Tâches Auto
+            </button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-indigo-200 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-gear"></i> Paramètres Notifications
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <div id="section-edt" class="space-y-6">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                    <button onclick="changeWeek(-1)" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition" title="Semaine précédente"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="text-center">
+                        <span id="current-week-label" class="font-bold text-slate-800 text-sm block">Semaine du ...</span>
+                        <button onclick="goToCurrentWeek()" class="text-[11px] text-indigo-600 hover:underline font-medium">Revenir à la semaine actuelle</button>
+                    </div>
+                    <button onclick="changeWeek(1)" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition" title="Semaine suivante"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                        <button onclick="setEdtView('week')" id="view-week-btn" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-white text-slate-800 shadow-sm transition">Semaine</button>
+                        <button onclick="setEdtView('day')" id="view-day-btn" class="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 transition">Jour par jour</button>
+                    </div>
+
+                    <button onclick="openCourseModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-plus"></i> Ajouter un événement
+                    </button>
+                </div>
+            </div>
+
+            <div id="day-nav-controls" class="hidden items-center justify-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <button onclick="changeDay(-1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="current-day-label" class="font-bold text-slate-700 text-sm w-56 text-center">Lundi 01 Janvier</span>
+                <button onclick="changeDay(1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <!-- Grille Semaine -->
+            <div id="container-week" class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="min-w-[850px] grid grid-cols-6 gap-2">
+                    <div class="text-center font-bold text-slate-400 text-xs py-2">Horaires</div>
+                    <div id="header-day-1" class="text-center font-bold text-slate-700 text-sm py-2">Lundi</div>
+                    <div id="header-day-2" class="text-center font-bold text-slate-700 text-sm py-2">Mardi</div>
+                    <div id="header-day-3" class="text-center font-bold text-slate-700 text-sm py-2">Mercredi</div>
+                    <div id="header-day-4" class="text-center font-bold text-slate-700 text-sm py-2">Jeudi</div>
+                    <div id="header-day-5" class="text-center font-bold text-slate-700 text-sm py-2">Vendredi</div>
+
+                    <div class="col-span-6 grid grid-cols-5 gap-2 relative ml-[calc(100%/6)]">
+                        <div class="absolute -left-[calc(100%/5)] w-[calc(100%/5)] top-0 bottom-0 flex flex-col text-right pr-2 text-xs text-slate-400 font-medium select-none" id="time-labels-col"></div>
+                        <div id="grid-lundi" class="col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]"></div>
+                        <div id="grid-mardi" class="col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]"></div>
+                        <div id="grid-mercredi" class="col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]"></div>
+                        <div id="grid-jeudi" class="col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]"></div>
+                        <div id="grid-vendredi" class="col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vue Jour par Jour -->
+            <div id="container-day" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                    <h2 id="day-title-view" class="text-lg font-bold text-slate-800">Lundi</h2>
+                    <span id="day-badge-view" class="text-xs px-2.5 py-1 rounded-full font-semibold hidden"></span>
+                </div>
+                <div id="day-courses-list" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <div id="section-tasks" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-700">Progression globale des tâches</span>
+                    <span id="global-progress-text" class="text-sm font-bold text-indigo-600">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div id="global-progress-bar" class="bg-indigo-600 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <select id="filter-task-subject" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Toutes les matières</option>
+                    </select>
+                </div>
+                <button onclick="openTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-plus"></i> Ajouter une tâche
+                </button>
+            </div>
+
+            <!-- Liste des tâches en cours -->
+            <div class="space-y-3" id="tasks-container"></div>
+
+            <!-- Menu déroulant (Accordéon) pour les tâches terminées -->
+            <div id="completed-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden">
+                <button onclick="toggleCompletedDropdown()" class="w-full px-5 py-3.5 flex justify-between items-center bg-slate-50 hover:bg-slate-100 transition text-left">
+                    <span class="text-xs font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-check-double text-emerald-600"></i> Tâches terminées (<span id="completed-count">0</span>)
+                    </span>
+                    <i id="completed-arrow" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                </button>
+                <div id="completed-tasks-container" class="p-4 space-y-3 border-t border-slate-100 hidden"></div>
+            </div>
+        </div>
+
+        <div id="section-subjects" class="hidden space-y-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Gestion des matières & Tâches automatiques</h2>
+                    <p class="text-xs text-slate-500">Configurez des tâches automatiques qui s'ajouteront à la date du prochain cours dès qu'un cours sera passé.</p>
+                </div>
+                <button onclick="openSubjectModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-plus"></i> Nouvelle matière
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="subjects-container"></div>
+        </div>
+
+        <div id="section-settings" class="hidden space-y-6 max-w-2xl mx-auto">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Centre de préférences de notifications</h2>
+                    <p class="text-xs text-slate-500 mt-1">Configurez exactement quand vous souhaitez être prévenu avant vos tâches et vos examens (Partiels).</p>
+                </div>
+
+                <div class="space-y-3 pt-4 border-t border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>Rappels pour les Tâches</h3>
+                        <button onclick="addNotificationRule('task')" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-plus mr-1"></i> Ajouter un rappel</button>
+                    </div>
+                    <div id="task-rules-container" class="space-y-2"></div>
+                </div>
+
+                <div class="space-y-3 pt-4 border-t border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-triangle-exclamation text-rose-600 mr-2"></i>Rappels pour les Partiels / Examens</h3>
+                        <button onclick="addNotificationRule('exam')" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-plus mr-1"></i> Ajouter un rappel</button>
+                    </div>
+                    <div id="exam-rules-container" class="space-y-2"></div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end">
+                    <button onclick="saveNotificationSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-sm">Enregistrer les préférences</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Cours / Vacances / Stage -->
+    <div id="course-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 id="course-modal-title" class="text-lg font-bold text-slate-800">Ajouter un événement</h3>
+            <form id="course-form" onsubmit="saveCourse(event)" class="space-y-4">
+                <input type="hidden" id="course-id">
+                <input type="hidden" id="course-edit-instance-date">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Type d'événement</label>
+                    <select id="course-type" onchange="onEventTypeChange()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Partiel">Partiel 📝</option>
+                        <option value="CM">CM (Cours Magistral)</option>
+                        <option value="TD">TD (Travaux Dirigés)</option>
+                        <option value="TP">TP (Travaux Pratiques)</option>
+                        <option value="Vacances">Vacances 🌴 (Banalise les cours)</option>
+                        <option value="Stage">Stage 💼 (Bloque les semaines)</option>
+                    </select>
+                </div>
+                <div id="field-subject">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label>
+                    <select id="course-subject" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="label-date-start">Date de début</label>
+                        <input type="date" id="course-date" required onchange="onStartDateChange(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div id="field-date-end" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date de fin</label>
+                        <input type="date" id="course-date-end" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div id="field-stage-weeks" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Durée (en semaines)</label>
+                        <input type="number" min="1" max="52" value="1" id="course-stage-weeks" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                
+                <div id="field-repeat-box" class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="course-repeating" onchange="toggleRepeatOptions()" class="w-4 h-4 rounded accent-indigo-600 cursor-pointer">
+                        <label for="course-repeating" class="text-xs font-semibold text-slate-700 cursor-pointer">Événement récurrent chaque semaine</label>
+                    </div>
+                    <div id="repeat-options" class="hidden space-y-3 pt-2 border-t border-slate-200">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Date de fin de récurrence</label>
+                            <input type="date" id="course-repeat-end" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Dates d'exception (exclues, séparées par virgules)</label>
+                            <input type="text" id="course-exceptions" placeholder="ex: 2026-11-01, 2026-12-25" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3" id="field-time-duration">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Heure de début</label>
+                        <select id="course-start" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Durée</label>
+                        <select id="course-duration" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="1">1h</option>
+                            <option value="1.5">1h30</option>
+                            <option value="2">2h</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="field-room">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Salle / Amphi (Optionnel)</label>
+                    <input type="text" id="course-room" placeholder="Ex: Amphi A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- Two Distinct Delete Buttons in Modal -->
+                <div id="modal-delete-section" class="hidden pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                    <button type="button" onclick="deleteSingleInstance()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash"></i> cet événement
+                    </button>
+                    <button type="button" onclick="deleteEntireSeries()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash"></i> série d'événements
+                    </button>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('course-modal')" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Annuler</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Tâche (Ajout / Modification) -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 id="task-modal-title" class="text-lg font-bold text-slate-800">Ajouter une tâche / devoir</h3>
+            <form id="task-form" onsubmit="saveTask(event)" class="space-y-4">
+                <input type="hidden" id="task-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label>
+                    <select id="task-subject" onchange="onTaskSubjectChange()" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Intitulé de la tâche</label>
+                    <input type="text" id="task-title" required placeholder="Ex: Exercices TD" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date limite (Échéance)</label>
+                        <input type="date" id="task-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Priorité</label>
+                        <select id="task-priority" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="normal">Normale</option>
+                            <option value="high">Urgente</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('task-modal')" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Annuler</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Matière & Tâches Auto -->
+    <div id="subject-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-slate-800">Gestion de la matière & Tâches auto</h3>
+            <form id="subject-form" onsubmit="saveSubject(event)" class="space-y-4">
+                <input type="hidden" id="subject-old-name">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nom de la matière</label>
+                    <input type="text" id="subject-name" required placeholder="Ex: Algèbre L3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Couleur associée</label>
+                    <div class="flex items-center gap-3">
+                        <input type="color" id="subject-color" value="#4f46e5" class="w-12 h-10 rounded-xl border border-slate-200 cursor-pointer p-1 bg-white">
+                        <span class="text-xs text-slate-400">Couleur d'affichage</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-700"><i class="fa-solid fa-robot text-indigo-600 mr-1.5"></i>Tâches auto post-cours</label>
+                        <button type="button" onclick="addAutoTaskField()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"><i class="fa-solid fa-plus mr-1"></i>Ajouter un modèle</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Ces tâches s'ajouteront automatiquement à la date du <strong>prochain cours</strong> dès qu'un cours de cette matière sera passé.</p>
+                    <div id="auto-tasks-list" class="space-y-2"></div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('subject-modal')" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Annuler</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Enregistrement du Service Worker pour les PWA & Notifications Push
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('Service Worker enregistré avec succès !', reg))
+                    .catch((err) => console.log('Erreur d\'enregistrement du Service Worker', err));
+            });
+        }
+
+        let appData = JSON.parse(localStorage.getItem('student_planner_data_v17')) || {
+            subjects: [
+                { name: "Algèbre", color: "#4f46e5", autoTasks: ["Relire le cours", "Faire les exercices du TD"] },
+                { name: "Topologie", color: "#0ea5e9", autoTasks: ["Apprendre les définitions"] },
+                { name: "Probabilités", color: "#10b981", autoTasks: ["Refaire les exemples du CM"] }
+            ],
+            courses: [],
+            tasks: [],
+            notificationRules: {
+                tasks: [
+                    { value: 1, unit: 'days' },
+                    { value: 3, unit: 'days' }
+                ],
+                exams: [
+                    { value: 1, unit: 'days' },
+                    { value: 3, unit: 'days' },
+                    { value: 7, unit: 'days' }
+                ]
+            }
+        };
+
+        function saveData() {
+            localStorage.setItem('student_planner_data_v17', JSON.stringify(appData));
+            renderAll();
+        }
+
+        let currentTab = 'edt';
+        let edtView = 'week';
+        let currentMondayDate = getMonday(new Date());
+        let currentDayDate = new Date();
+
+        function getMonday(d) {
+            d = new Date(d);
+            let day = d.getDay();
+            let diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            let monday = new Date(d.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            return monday;
+        }
+
+        function parseLocalDate(dateStr) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function formatDateISO(date) {
+            let d = new Date(date);
+            let month = '' + (d.getMonth() + 1),
+                day = '' + d.getDate(),
+                year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+
+        function formatDateFr(date) {
+            return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        }
+
+        // Jours Fériés France
+        function getEasterSunday(year) {
+            let a = year % 19, b = Math.floor(year / 100), c = year % 100,
+                d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+                g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+                i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7,
+                m = Math.floor((a + 11 * h + 22 * l) / 451),
+                month = Math.floor((h + l - 7 * m + 114) / 31),
+                day = ((h + l - 7 * m + 114) % 31) + 1;
+            return new Date(year, month - 1, day);
+        }
+
+        function getFrenchHolidays(year) {
+            let holidays = [`${year}-01-01`, `${year}-05-01`, `${year}-05-08`, `${year}-07-14`, `${year}-08-15`, `${year}-11-01`, `${year}-11-11`, `${year}-12-25`];
+            let easter = getEasterSunday(year);
+            let addDays = (date, days) => { let res = new Date(date); res.setDate(res.getDate() + days); return formatDateISO(res); };
+            holidays.push(addDays(easter, 1), addDays(easter, 39), addDays(easter, 50));
+            return holidays;
+        }
+
+        function isHoliday(dateStr) {
+            let year = new Date(dateStr).getFullYear();
+            return getFrenchHolidays(year).concat(getFrenchHolidays(year + 1)).includes(dateStr);
+        }
+
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) { alert("Non supporté."); return; }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    document.getElementById('notif-btn').classList.add('hidden');
+                    new Notification("Alertes activées !");
+                }
+            });
+        }
+
+        function checkNotificationsStatus() {
+            if (("Notification" in window) && Notification.permission === "granted") {
+                document.getElementById('notif-btn').classList.add('hidden');
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            ['edt', 'tasks', 'subjects', 'settings'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = "px-4 py-3 text-sm font-medium border-b-2 border-transparent text-indigo-200 hover:text-white transition flex items-center gap-2 whitespace-nowrap";
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).className = "px-4 py-3 text-sm font-medium border-b-2 border-white text-white transition flex items-center gap-2 whitespace-nowrap";
+            renderAll();
+        }
+
+        function setEdtView(view) {
+            edtView = view;
+            if (view === 'week') {
+                document.getElementById('container-week').classList.remove('hidden');
+                document.getElementById('container-day').classList.add('hidden');
+                document.getElementById('day-nav-controls').classList.add('hidden');
+                document.getElementById('view-week-btn').className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-white text-slate-800 shadow-sm transition";
+                document.getElementById('view-day-btn').className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 transition";
+            } else {
+                document.getElementById('container-week').classList.add('hidden');
+                document.getElementById('container-day').classList.remove('hidden');
+                document.getElementById('day-nav-controls').classList.remove('hidden');
+                document.getElementById('view-day-btn').className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-white text-slate-800 shadow-sm transition";
+                document.getElementById('view-week-btn').className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 transition";
+                updateDayLabel();
+            }
+            renderEdt();
+        }
+
+        function changeWeek(dir) {
+            currentMondayDate.setDate(currentMondayDate.getDate() + (dir * 7));
+            renderEdt();
+        }
+
+        function goToCurrentWeek() {
+            currentMondayDate = getMonday(new Date());
+            renderEdt();
+        }
+
+        function changeDay(dir) {
+            currentDayDate.setDate(currentDayDate.getDate() + dir);
+            updateDayLabel();
+            renderEdt();
+        }
+
+        function updateDayLabel() {
+            const dateStr = formatDateISO(currentDayDate);
+            const label = currentDayDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('current-day-label').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            document.getElementById('day-title-view').textContent = document.getElementById('current-day-label').textContent;
+
+            const badge = document.getElementById('day-badge-view');
+            if (isHoliday(dateStr)) {
+                badge.textContent = "🎉 Jour Férié";
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 block";
+            } else {
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-semibold hidden";
+            }
+        }
+
+        function generateTimeSlots() {
+            const col = document.getElementById('time-labels-col');
+            let html = '';
+            for (let h = 8; h <= 19; h++) {
+                for (let m of [0, 30]) {
+                    if (h === 19 && m > 0) break;
+                    let timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                    html += `<div class="h-10 flex items-center justify-end pr-2 border-b border-transparent text-xs text-slate-400 font-medium">${timeStr}</div>`;
+                }
+            }
+            col.innerHTML = html;
+        }
+
+        function timeToMinutes(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function getExpandedCourses() {
+            let expanded = [];
+            appData.courses.forEach(course => {
+                if (course.type === 'Vacances') {
+                    let startD = parseLocalDate(course.date);
+                    let endD = course.dateEnd ? parseLocalDate(course.dateEnd) : parseLocalDate(course.date);
+                    let curr = new Date(startD);
+                    while (curr <= endD) {
+                        let dStr = formatDateISO(curr);
+                        expanded.push({ ...course, date: dStr, uniqueInstanceId: `${course.id}_${dStr}` });
+                        curr.setDate(curr.getDate() + 1);
+                    }
+                } else if (course.type === 'Stage') {
+                    let startD = parseLocalDate(course.date);
+                    let weeks = course.stageWeeks || 1;
+                    let totalDays = weeks * 7;
+                    let curr = new Date(startD);
+                    for (let i = 0; i < totalDays; i++) {
+                        let dayOfWeek = curr.getDay();
+                        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                            let dStr = formatDateISO(curr);
+                            expanded.push({ ...course, date: dStr, uniqueInstanceId: `${course.id}_${dStr}` });
+                        }
+                        curr.setDate(curr.getDate() + 1);
+                    }
+                } else if (!course.repeating || !course.repeatEnd) {
+                    expanded.push({ ...course, uniqueInstanceId: `${course.id}_${course.date}` });
+                } else {
+                    let currentD = parseLocalDate(course.date);
+                    let endD = parseLocalDate(course.repeatEnd);
+                    let exceptions = course.exceptions ? course.exceptions.split(',').map(s => s.trim()) : [];
+                    let overrides = course.overrides || {};
+
+                    while (currentD <= endD) {
+                        let dateStr = formatDateISO(currentD);
+                        if (!exceptions.includes(dateStr)) {
+                            let instance = { ...course, date: dateStr, uniqueInstanceId: `${course.id}_${dateStr}` };
+                            if (overrides[dateStr]) {
+                                instance = { ...instance, ...overrides[dateStr] };
+                            }
+                            expanded.push(instance);
+                        }
+                        currentD.setDate(currentD.getDate() + 7);
+                    }
+                }
+            });
+            return expanded.sort((a,b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+        }
+
+        // Tâches automatiques post-cours : générées dès qu'un cours est passé, assignées au PROCHAIN cours
+        function syncAutoTasks() {
+            let allCourses = getExpandedCourses().filter(c => c.type !== 'Vacances' && c.type !== 'Stage');
+            let now = new Date();
+            let todayStr = formatDateISO(now);
+            let currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            let autoTaskIds = new Set();
+
+            let coursesBySubject = {};
+            allCourses.forEach(c => {
+                if (!coursesBySubject[c.subject]) coursesBySubject[c.subject] = [];
+                coursesBySubject[c.subject].push(c);
+            });
+
+            Object.keys(coursesBySubject).forEach(subjName => {
+                let subj = appData.subjects.find(s => s.name === subjName);
+                if (!subj || !subj.autoTasks || subj.autoTasks.length === 0) return;
+                let cList = coursesBySubject[subjName];
+
+                for (let i = 0; i < cList.length; i++) {
+                    let pastCourse = cList[i];
+                    let [startH, startM] = pastCourse.start.split(':').map(Number);
+                    let endTotalMin = startH * 60 + startM + (pastCourse.duration * 60);
+                    let endH = Math.floor(endTotalMin / 60);
+                    let endM = endTotalMin % 60;
+                    let endTimeStr = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+
+                    let isPassed = (pastCourse.date < todayStr) || (pastCourse.date === todayStr && currentTimeStr >= endTimeStr);
+
+                    if (isPassed) {
+                        let nextCourse = cList[i + 1] || pastCourse;
+
+                        subj.autoTasks.forEach(taskTitle => {
+                            let autoId = `auto_${pastCourse.uniqueInstanceId}_${taskTitle}`;
+                            autoTaskIds.add(autoId);
+
+                            let existingTask = appData.tasks.find(t => t.id === autoId);
+                            if (!existingTask) {
+                                appData.tasks.push({
+                                    id: autoId,
+                                    subject: subjName,
+                                    title: `[Auto] ${taskTitle} (${subjName})`,
+                                    date: nextCourse.date,
+                                    priority: 'normal',
+                                    completed: false,
+                                    isAuto: true
+                                });
+                            } else {
+                                existingTask.date = nextCourse.date;
+                            }
+                        });
+                    }
+                }
+            });
+
+            appData.tasks = appData.tasks.filter(t => !t.isAuto || autoTaskIds.has(t.id));
+        }
+
+        function getSpecialEventOnDate(dateStr) {
+            let allCourses = getExpandedCourses();
+            return allCourses.find(c => (c.type === 'Vacances' || c.type === 'Stage') && c.date === dateStr);
+        }
+
+        function renderEdt() {
+            syncAutoTasks();
+            let weekDates = [];
+            let tempDate = new Date(currentMondayDate);
+            for (let i = 0; i < 5; i++) {
+                weekDates.push(new Date(tempDate));
+                tempDate.setDate(tempDate.getDate() + 1);
+            }
+
+            const fridayDate = new Date(weekDates[4]);
+            document.getElementById('current-week-label').textContent = `Semaine du ${formatDateFr(weekDates[0])} au ${formatDateFr(fridayDate)} ${fridayDate.getFullYear()}`;
+
+            const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+            for (let i = 0; i < 5; i++) {
+                const dateStr = formatDateISO(weekDates[i]);
+                const headerEl = document.getElementById(`header-day-${i+1}`);
+                const gridEl = document.getElementById(`grid-${['lundi','mardi','mercredi','jeudi','vendredi'][i]}`);
+
+                if (isHoliday(dateStr)) {
+                    headerEl.innerHTML = `${dayNames[i]}<br><span class="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1 rounded">🎉 Férié</span><br><span class="text-xs font-normal text-slate-400">${formatDateFr(weekDates[i])}</span>`;
+                    gridEl.className = "col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px] bg-slate-100/70 rounded-lg";
+                } else {
+                    headerEl.innerHTML = `${dayNames[i]}<br><span class="text-xs font-normal text-slate-400">${formatDateFr(weekDates[i])}</span>`;
+                    gridEl.className = "col-span-1 border-l border-slate-100 pl-1 relative min-h-[880px]";
+                }
+            }
+
+            let allCourses = getExpandedCourses();
+
+            if (edtView === 'week') {
+                for (let i = 0; i < 5; i++) {
+                    const dateStr = formatDateISO(weekDates[i]);
+                    const grid = document.getElementById(`grid-${['lundi','mardi','mercredi','jeudi','vendredi'][i]}`);
+                    grid.innerHTML = '';
+                    
+                    const specialEvent = getSpecialEventOnDate(dateStr);
+                    if (specialEvent) {
+                        const isStage = specialEvent.type === 'Stage';
+                        const bannerClass = isStage ? "bg-indigo-50 border-indigo-300 text-indigo-900" : "bg-amber-50 border-amber-300 text-amber-900";
+                        const iconClass = isStage ? "fa-briefcase text-indigo-600" : "fa-umbrella-beach text-amber-600";
+
+                        const banner = document.createElement('div');
+                        banner.className = `absolute inset-x-0 top-10 bottom-10 border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center z-10 shadow-sm cursor-pointer hover:opacity-90 transition ${bannerClass}`;
+                        banner.setAttribute('onclick', `editCourse('${specialEvent.id}', '${dateStr}')`);
+                        banner.innerHTML = `
+                            <i class="fa-solid ${iconClass} text-2xl mb-1"></i>
+                            <span class="font-bold text-xs">${isStage ? 'Stage 💼' : 'Vacances 🌴'}</span>
+                            <span class="text-[10px] opacity-80">Cliquer pour modifier</span>
+                        `;
+                        grid.appendChild(banner);
+                        continue;
+                    }
+
+                    const dayCourses = allCourses.filter(c => c.date === dateStr && c.type !== 'Vacances' && c.type !== 'Stage');
+                    dayCourses.forEach(course => {
+                        const subj = appData.subjects.find(s => s.name === course.subject);
+                        const color = subj ? subj.color : '#4f46e5';
+                        
+                        let patternClass = '';
+                        if (course.type === 'Partiel') patternClass = 'pattern-partiel';
+                        else if (course.type === 'CM') patternClass = 'pattern-cm';
+                        else if (course.type === 'TD') patternClass = 'pattern-td';
+                        else if (course.type === 'TP') patternClass = 'pattern-tp';
+                        
+                        const startMin = timeToMinutes(course.start);
+                        const topOffset = ((startMin - 480) / 30) * 40;
+                        const height = (course.duration * 2) * 40;
+
+                        const el = document.createElement('div');
+                        el.className = `absolute left-1 right-1 rounded-xl p-2.5 text-white shadow-sm flex flex-col justify-between overflow-hidden cursor-pointer hover:opacity-95 transition ${patternClass} ${course.type === 'Partiel' ? 'border-2 border-rose-400' : 'border border-white/20'}`;
+                        el.style.top = `${topOffset}px`;
+                        el.style.height = `${height}px`;
+                        el.style.backgroundColor = color;
+                        el.setAttribute('onclick', `editCourse('${course.id}', '${dateStr}')`);
+
+                        el.innerHTML = `
+                            <div>
+                                <div class="font-bold text-xs truncate flex items-center justify-between">
+                                    <span class="bg-black/25 px-1 py-0.5 rounded text-[9px] font-bold uppercase">${course.type}</span>
+                                    <span class="truncate ml-1">${course.subject}</span>
+                                </div>
+                                <div class="text-[10px] opacity-90 mt-0.5">${course.start} (${course.duration}h)</div>
+                            </div>
+                            ${course.room ? `<div class="text-[10px] bg-black/25 px-1.5 py-0.5 rounded truncate mt-1 self-start">${course.room}</div>` : ''}
+                        `;
+                        grid.appendChild(el);
+                    });
+                }
+            } else {
+                const list = document.getElementById('day-courses-list');
+                list.innerHTML = '';
+                const dateStr = formatDateISO(currentDayDate);
+                
+                const specialEvent = getSpecialEventOnDate(dateStr);
+                if (specialEvent) {
+                    const isStage = specialEvent.type === 'Stage';
+                    list.innerHTML = `
+                        <div onclick="editCourse('${specialEvent.id}', '${dateStr}')" class="p-6 ${isStage ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-amber-50 border-amber-200 text-amber-900'} border rounded-xl text-center space-y-2 cursor-pointer hover:shadow-md transition">
+                            <i class="fa-solid ${isStage ? 'fa-briefcase' : 'fa-umbrella-beach'} text-2xl"></i>
+                            <h4 class="font-bold text-sm">${isStage ? 'Période de Stage' : 'Période de Vacances'}</h4>
+                            <p class="text-xs">Cliquer pour modifier ou supprimer.</p>
+                        </div>`;
+                    return;
+                }
+
+                const dayCourses = allCourses.filter(c => c.date === dateStr && c.type !== 'Vacances' && c.type !== 'Stage').sort((a,b) => a.start.localeCompare(b.start));
+                
+                if (dayCourses.length === 0) {
+                    list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">Aucun événement prévu ce jour.</div>`;
+                    return;
+                }
+
+                dayCourses.forEach(course => {
+                    const subj = appData.subjects.find(s => s.name === course.subject);
+                    const color = subj ? subj.color : '#4f46e5';
+
+                    const el = document.createElement('div');
+                    el.className = `p-4 rounded-xl text-white shadow-sm flex justify-between items-center cursor-pointer hover:opacity-95 ${course.type === 'Partiel' ? 'border-2 border-rose-400' : ''}`;
+                    el.style.backgroundColor = color;
+                    el.setAttribute('onclick', `editCourse('${course.id}', '${dateStr}')`);
+
+                    el.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-sm flex items-center gap-2">
+                                <span class="bg-black/25 px-2 py-0.5 rounded text-[10px] font-bold uppercase">${course.type}</span>
+                                ${course.subject}
+                            </h4>
+                            <p class="text-xs opacity-90 mt-1"><i class="fa-regular fa-clock mr-1"></i> ${course.start} - Durée : ${course.duration}h ${course.room ? `| <i class="fa-solid fa-location-dot ml-1"></i> ${course.room}` : ''}</p>
+                        </div>
+                        <div class="text-xs bg-black/20 px-2 py-1 rounded">Modifier</div>
+                    `;
+                    list.appendChild(el);
+                });
+            }
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('tasks-container');
+            const completedContainer = document.getElementById('completed-tasks-container');
+            const completedSection = document.getElementById('completed-section');
+            const completedCount = document.getElementById('completed-count');
+            const filterSubj = document.getElementById('filter-task-subject').value;
+            
+            container.innerHTML = '';
+            completedContainer.innerHTML = '';
+
+            let filteredTasks = appData.tasks;
+            if (filterSubj) { 
+                filteredTasks = filteredTasks.filter(t => t.subject === filterSubj); 
+            }
+
+            filteredTasks.sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+
+            let activeTasks = filteredTasks.filter(t => !t.completed);
+            let completedTasks = filteredTasks.filter(t => t.completed);
+
+            // Barre de progression globale
+            const totalTasks = appData.tasks.length;
+            const totalCompleted = appData.tasks.filter(t => t.completed).length;
+            const globalPercent = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+            document.getElementById('global-progress-bar').style.width = `${globalPercent}%`;
+            document.getElementById('global-progress-text').textContent = `${globalPercent}%`;
+
+            // Rendu des tâches en cours
+            if (activeTasks.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm bg-white rounded-2xl border border-slate-200">Aucune tâche en cours.</div>`;
+            } else {
+                activeTasks.forEach(task => {
+                    container.appendChild(createTaskCard(task));
+                });
+            }
+
+            // Gestion du menu déroulant des tâches terminées
+            if (completedTasks.length > 0) {
+                completedSection.classList.remove('hidden');
+                completedCount.textContent = completedTasks.length;
+                completedTasks.forEach(task => {
+                    completedContainer.appendChild(createTaskCard(task));
+                });
+            } else {
+                completedSection.classList.add('hidden');
+            }
+        }
+
+        function createTaskCard(task) {
+            const subj = appData.subjects.find(s => s.name === task.subject);
+            const color = subj ? subj.color : '#4f46e5';
+            const el = document.createElement('div');
+            el.className = `bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 relative overflow-hidden`;
+            el.innerHTML = `
+                <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${color};"></div>
+                <div class="flex items-center gap-3 pl-2 flex-1">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')" class="w-5 h-5 rounded accent-indigo-600 cursor-pointer">
+                    <div class="cursor-pointer flex-1" onclick="openTaskModal('${task.id}')">
+                        <h4 class="text-sm font-semibold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}">${task.title}</h4>
+                        <div class="flex items-center gap-2 mt-1 text-xs text-slate-500 flex-wrap">
+                            <span class="font-medium px-2 py-0.5 rounded-full text-white" style="background-color: ${color};">${task.subject}</span>
+                            ${task.date ? `<span><i class="fa-regular fa-calendar mr-1"></i>Pour le ${task.date}</span>` : ''}
+                            ${task.isAuto ? '<span class="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-medium"><i class="fa-solid fa-robot mr-1"></i>Post-cours</span>' : ''}
+                            ${task.priority === 'high' ? '<span class="text-rose-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Urgente</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button onclick="openTaskModal('${task.id}')" class="text-slate-400 hover:text-indigo-600 p-2 transition" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="deleteTask('${task.id}')" class="text-slate-400 hover:text-rose-600 p-2 transition" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
+            return el;
+        }
+
+        function toggleCompletedDropdown() {
+            const container = document.getElementById('completed-tasks-container');
+            const arrow = document.getElementById('completed-arrow');
+            container.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        function renderSubjects() {
+            const container = document.getElementById('subjects-container');
+            container.innerHTML = '';
+            if (appData.subjects.length === 0) {
+                container.innerHTML = `<div class="col-span-3 text-center py-8 text-slate-400 text-sm">Aucune matière créée.</div>`;
+                return;
+            }
+            appData.subjects.forEach(subj => {
+                const subjTasks = appData.tasks.filter(t => t.subject === subj.name);
+                const subjCompleted = subjTasks.filter(t => t.completed).length;
+                const subjPercent = subjTasks.length > 0 ? Math.round((subjCompleted / subjTasks.length) * 100) : 0;
+
+                const el = document.createElement('div');
+                el.className = `bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3 relative overflow-hidden`;
+                
+                let autoTasksHtml = '';
+                if (subj.autoTasks && subj.autoTasks.length > 0) {
+                    autoTasksHtml = `<div class="text-xs text-slate-600 space-y-1"><span class="font-semibold text-slate-700">Tâches auto post-cours :</span><ul class="list-disc pl-4 opacity-90">${subj.autoTasks.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
+                } else {
+                    autoTasksHtml = `<div class="text-xs text-slate-400 italic">Aucune tâche auto configurée.</div>`;
+                }
+
+                el.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-2.5" style="background-color: ${subj.color};"></div>
+                    <div class="flex justify-between items-center pl-2">
+                        <h3 class="font-bold text-slate-800 text-base">${subj.name}</h3>
+                        <div class="flex gap-1">
+                            <button onclick="openSubjectModal('${subj.name}')" class="text-slate-400 hover:text-indigo-600 p-1.5 transition"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteSubject('${subj.name}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="pl-2 space-y-2">
+                        ${autoTasksHtml}
+                        <div class="space-y-1 pt-1 border-t border-slate-100">
+                            <div class="flex justify-between text-xs text-slate-500">
+                                <span>Progression des tâches</span>
+                                <span class="font-semibold text-slate-700">${subjPercent}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div class="h-full transition-all duration-300" style="width: ${subjPercent}%; background-color: ${subj.color};"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function renderSettings() {
+            const taskRulesContainer = document.getElementById('task-rules-container');
+            const examRulesContainer = document.getElementById('exam-rules-container');
+            taskRulesContainer.innerHTML = '';
+            examRulesContainer.innerHTML = '';
+
+            appData.notificationRules.tasks.forEach((rule, idx) => {
+                taskRulesContainer.innerHTML += `
+                    <div class="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-600">Me prévenir</span>
+                        <input type="number" min="1" value="${rule.value}" id="task-rule-val-${idx}" class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs">
+                        <select id="task-rule-unit-${idx}" class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs">
+                            <option value="minutes" ${rule.unit==='minutes'?'selected':''}>Minutes</option>
+                            <option value="hours" ${rule.unit==='hours'?'selected':''}>Heures</option>
+                            <option value="days" ${rule.unit==='days'?'selected':''}>Jours</option>
+                        </select>
+                        <span class="text-xs text-slate-600">avant l'échéance</span>
+                        <button onclick="removeNotificationRule('tasks', ${idx})" class="ml-auto text-slate-400 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+            });
+
+            appData.notificationRules.exams.forEach((rule, idx) => {
+                examRulesContainer.innerHTML += `
+                    <div class="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-600">Me prévenir</span>
+                        <input type="number" min="1" value="${rule.value}" id="exam-rule-val-${idx}" class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs">
+                        <select id="exam-rule-unit-${idx}" class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs">
+                            <option value="minutes" ${rule.unit==='minutes'?'selected':''}>Minutes</option>
+                            <option value="hours" ${rule.unit==='hours'?'selected':''}>Heures</option>
+                            <option value="days" ${rule.unit==='days'?'selected':''}>Jours</option>
+                        </select>
+                        <span class="text-xs text-slate-600">avant l'examen</span>
+                        <button onclick="removeNotificationRule('exams', ${idx})" class="ml-auto text-slate-400 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+            });
+        }
+
+        function addNotificationRule(type) {
+            if (type === 'task') {
+                appData.notificationRules.tasks.push({ value: 1, unit: 'days' });
+            } else {
+                appData.notificationRules.exams.push({ value: 1, unit: 'days' });
+            }
+            renderSettings();
+        }
+
+        function removeNotificationRule(type, idx) {
+            if (type === 'tasks') appData.notificationRules.tasks.splice(idx, 1);
+            else appData.notificationRules.exams.splice(idx, 1);
+            renderSettings();
+        }
+
+        function saveNotificationSettings() {
+            appData.notificationRules.tasks = appData.notificationRules.tasks.map((r, idx) => ({
+                value: parseInt(document.getElementById(`task-rule-val-${idx}`).value) || 1,
+                unit: document.getElementById(`task-rule-unit-${idx}`).value
+            }));
+            appData.notificationRules.exams = appData.notificationRules.exams.map((r, idx) => ({
+                value: parseInt(document.getElementById(`exam-rule-val-${idx}`).value) || 1,
+                unit: document.getElementById(`exam-rule-unit-${idx}`).value
+            }));
+            saveData();
+            alert("Paramètres de notifications enregistrés avec succès !");
+        }
+
+        function updateSelects() {
+            const subjectSelects = [document.getElementById('course-subject'), document.getElementById('task-subject'), document.getElementById('filter-task-subject')];
+            subjectSelects.forEach((select, idx) => {
+                const currentVal = select.value;
+                select.innerHTML = idx === 2 ? '<option value="">Toutes les matières</option>' : '';
+                appData.subjects.forEach(subj => {
+                    const opt = document.createElement('option');
+                    opt.value = subj.name;
+                    opt.textContent = subj.name;
+                    select.appendChild(opt);
+                });
+                select.value = currentVal;
+            });
+        }
+
+        function populateTimeSelect() {
+            const startSelect = document.getElementById('course-start');
+            startSelect.innerHTML = '';
+            for (let h = 8; h <= 18; h++) {
+                for (let m of [0, 30]) {
+                    let timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                    const opt = document.createElement('option');
+                    opt.value = timeStr;
+                    opt.textContent = timeStr;
+                    startSelect.appendChild(opt);
+                }
+            }
+        }
+
+        function findNextCourseDate(subjectName) {
+            const todayStr = formatDateISO(new Date());
+            const allCourses = getExpandedCourses();
+            const futureCourses = allCourses
+                .filter(c => c.subject === subjectName && c.date >= todayStr && c.type !== 'Vacances' && c.type !== 'Stage')
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            if (futureCourses.length > 0) { return futureCourses[0].date; }
+            return todayStr;
+        }
+
+        function onTaskSubjectChange() {
+            const selectedSubject = document.getElementById('task-subject').value;
+            document.getElementById('task-date').value = findNextCourseDate(selectedSubject);
+        }
+
+        function onStartDateChange(val) {
+            if (val && document.getElementById('course-repeating').checked) {
+                let d = parseLocalDate(val);
+                d.setMonth(d.getMonth() + 3);
+                document.getElementById('course-repeat-end').value = formatDateISO(d);
+            }
+        }
+
+        function onEventTypeChange() {
+            const type = document.getElementById('course-type').value;
+            const subField = document.getElementById('field-subject');
+            const timeField = document.getElementById('field-time-duration');
+            const roomField = document.getElementById('field-room');
+            const repeatBox = document.getElementById('field-repeat-box');
+            const dateEndField = document.getElementById('field-date-end');
+            const stageWeeksField = document.getElementById('field-stage-weeks');
+            const labelDateStart = document.getElementById('label-date-start');
+
+            if (type === 'Vacances') {
+                subField.classList.add('hidden');
+                timeField.classList.add('hidden');
+                roomField.classList.add('hidden');
+                repeatBox.classList.add('hidden');
+                dateEndField.classList.remove('hidden');
+                stageWeeksField.classList.add('hidden');
+                labelDateStart.textContent = "Date de début";
+            } else if (type === 'Stage') {
+                subField.classList.add('hidden');
+                timeField.classList.add('hidden');
+                roomField.classList.add('hidden');
+                repeatBox.classList.add('hidden');
+                dateEndField.classList.add('hidden');
+                stageWeeksField.classList.remove('hidden');
+                labelDateStart.textContent = "Date de début du stage";
+            } else {
+                subField.classList.remove('hidden');
+                timeField.classList.remove('hidden');
+                roomField.classList.remove('hidden');
+                repeatBox.classList.remove('hidden');
+                dateEndField.classList.add('hidden');
+                stageWeeksField.classList.add('hidden');
+                labelDateStart.textContent = "Date de début / Date unique";
+            }
+        }
+
+        function toggleRepeatOptions() {
+            const isRepeating = document.getElementById('course-repeating').checked;
+            const repeatOpts = document.getElementById('repeat-options');
+            if (isRepeating) {
+                repeatOpts.classList.remove('hidden');
+                document.getElementById('course-repeat-end').required = true;
+                if (!document.getElementById('course-repeat-end').value) {
+                    let startVal = document.getElementById('course-date').value;
+                    if (startVal) {
+                        let d = parseLocalDate(startVal);
+                        d.setMonth(d.getMonth() + 3);
+                        document.getElementById('course-repeat-end').value = formatDateISO(d);
+                    }
+                }
+            } else {
+                repeatOpts.classList.add('hidden');
+                document.getElementById('course-repeat-end').required = false;
+            }
+        }
+
+        function openCourseModal() {
+            document.getElementById('course-form').reset();
+            document.getElementById('course-id').value = '';
+            document.getElementById('course-edit-instance-date').value = '';
+            document.getElementById('course-modal-title').textContent = "Ajouter un événement";
+            document.getElementById('modal-delete-section').classList.add('hidden');
+            document.getElementById('course-date').value = formatDateISO(new Date());
+            document.getElementById('course-repeating').checked = false;
+            document.getElementById('repeat-options').classList.add('hidden');
+            onEventTypeChange();
+            document.getElementById('course-modal').classList.remove('hidden');
+        }
+
+        function editCourse(id, instanceDate = '') {
+            const course = appData.courses.find(c => c.id === id);
+            if (!course) return;
+
+            document.getElementById('course-form').reset();
+            document.getElementById('course-id').value = course.id;
+            document.getElementById('course-modal-title').textContent = "Modifier l'événement";
+            document.getElementById('modal-delete-section').classList.remove('hidden');
+
+            let targetDate = instanceDate || course.date;
+            if (course.repeating && instanceDate && course.overrides && course.overrides[instanceDate]) {
+                let ov = course.overrides[instanceDate];
+                document.getElementById('course-type').value = ov.type || course.type;
+                document.getElementById('course-subject').value = ov.subject || course.subject;
+                document.getElementById('course-date').value = instanceDate;
+                document.getElementById('course-start').value = ov.start || course.start;
+                document.getElementById('course-duration').value = ov.duration || course.duration;
+                document.getElementById('course-room').value = ov.room !== undefined ? ov.room : course.room;
+                document.getElementById('course-edit-instance-date').value = instanceDate;
+            } else {
+                document.getElementById('course-type').value = course.type;
+                document.getElementById('course-subject').value = course.subject || '';
+                document.getElementById('course-date').value = targetDate;
+                document.getElementById('course-date-end').value = course.dateEnd || '';
+                document.getElementById('course-stage-weeks').value = course.stageWeeks || 1;
+                document.getElementById('course-start').value = course.start || '08:00';
+                document.getElementById('course-duration').value = course.duration || 1;
+                document.getElementById('course-room').value = course.room || '';
+                document.getElementById('course-repeating').checked = course.repeating || false;
+                document.getElementById('course-repeat-end').value = course.repeatEnd || '';
+                document.getElementById('course-exceptions').value = course.exceptions || '';
+                document.getElementById('course-edit-instance-date').value = course.repeating && instanceDate ? instanceDate : '';
+            }
+
+            if (course.repeating && instanceDate) {
+                if (!confirm(`Modifier uniquement l'occurrence du ${instanceDate} ?\n(Cliquez sur Annuler pour modifier toute la série récurrente)`)) {
+                    document.getElementById('course-edit-instance-date').value = '';
+                    document.getElementById('course-date').value = course.date;
+                }
+            }
+
+            onEventTypeChange();
+            toggleRepeatOptions();
+            document.getElementById('course-modal').classList.remove('hidden');
+        }
+
+        function deleteSingleInstance() {
+            const courseId = document.getElementById('course-id').value;
+            const instanceDate = document.getElementById('course-edit-instance-date').value;
+            const course = appData.courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            if (course.repeating || instanceDate) {
+                let targetDate = instanceDate || course.date;
+                let excs = course.exceptions ? course.exceptions.split(',').map(s => s.trim()) : [];
+                if (!excs.includes(targetDate)) excs.push(targetDate);
+                course.exceptions = excs.join(', ');
+                saveData();
+                closeModal('course-modal');
+                return;
+            }
+
+            if (confirm("Supprimer cet événement ?")) {
+                appData.courses = appData.courses.filter(c => c.id !== courseId);
+                saveData();
+                closeModal('course-modal');
+            }
+        }
+
+        function deleteEntireSeries() {
+            const courseId = document.getElementById('course-id').value;
+            if (!courseId) return;
+
+            if (confirm("Supprimer toute la série d'événements ?")) {
+                appData.courses = appData.courses.filter(c => c.id !== courseId);
+                saveData();
+                closeModal('course-modal');
+            }
+        }
+
+        function openTaskModal(taskId = '') {
+            document.getElementById('task-form').reset();
+            if (taskId) {
+                const task = appData.tasks.find(t => t.id === taskId);
+                if (task) {
+                    document.getElementById('task-modal-title').textContent = "Modifier la tâche";
+                    document.getElementById('task-id').value = task.id;
+                    document.getElementById('task-subject').value = task.subject;
+                    document.getElementById('task-title').value = task.title;
+                    document.getElementById('task-date').value = task.date || formatDateISO(new Date());
+                    document.getElementById('task-priority').value = task.priority || 'normal';
+                }
+            } else {
+                document.getElementById('task-modal-title').textContent = "Ajouter une tâche / devoir";
+                document.getElementById('task-id').value = '';
+                const firstSubject = document.getElementById('task-subject').value;
+                document.getElementById('task-date').value = firstSubject ? findNextCourseDate(firstSubject) : formatDateISO(new Date());
+                document.getElementById('task-priority').value = 'normal';
+            }
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function openSubjectModal(name = '') {
+            document.getElementById('subject-form').reset();
+            const listContainer = document.getElementById('auto-tasks-list');
+            listContainer.innerHTML = '';
+
+            if (name) {
+                const subj = appData.subjects.find(s => s.name === name);
+                document.getElementById('subject-old-name').value = name;
+                document.getElementById('subject-name').value = subj.name;
+                document.getElementById('subject-color').value = subj.color;
+                if (subj.autoTasks && subj.autoTasks.length > 0) {
+                    subj.autoTasks.forEach(taskTitle => addAutoTaskField(taskTitle));
+                } else {
+                    addAutoTaskField();
+                }
+            } else {
+                document.getElementById('subject-old-name').value = '';
+                document.getElementById('subject-color').value = '#4f46e5';
+                addAutoTaskField("Relire le cours");
+            }
+            document.getElementById('subject-modal').classList.remove('hidden');
+        }
+
+        function addAutoTaskField(val = '') {
+            const container = document.getElementById('auto-tasks-list');
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-2";
+            div.innerHTML = `
+                <input type="text" value="${val}" placeholder="Ex: Relire le cours" class="auto-task-input flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 px-2 text-xs"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function saveCourse(e) {
+            e.preventDefault();
+            const courseId = document.getElementById('course-id').value;
+            const instanceDate = document.getElementById('course-edit-instance-date').value;
+            const type = document.getElementById('course-type').value;
+            const isRepeating = document.getElementById('course-repeating').checked;
+
+            if (courseId && instanceDate) {
+                let course = appData.courses.find(c => c.id === courseId);
+                if (course) {
+                    if (!course.overrides) course.overrides = {};
+                    course.overrides[instanceDate] = {
+                        type: type,
+                        subject: type === 'Vacances' || type === 'Stage' ? type : document.getElementById('course-subject').value,
+                        start: type === 'Vacances' || type === 'Stage' ? '08:00' : document.getElementById('course-start').value,
+                        duration: type === 'Vacances' || type === 'Stage' ? 11 : parseFloat(document.getElementById('course-duration').value),
+                        room: type === 'Vacances' || type === 'Stage' ? '' : document.getElementById('course-room').value
+                    };
+                }
+            } else if (courseId) {
+                let course = appData.courses.find(c => c.id === courseId);
+                if (course) {
+                    course.type = type;
+                    course.subject = type === 'Vacances' || type === 'Stage' ? type : document.getElementById('course-subject').value;
+                    course.date = document.getElementById('course-date').value;
+                    course.dateEnd = type === 'Vacances' ? (document.getElementById('course-date-end').value || document.getElementById('course-date').value) : null;
+                    course.stageWeeks = type === 'Stage' ? parseInt(document.getElementById('course-stage-weeks').value) || 1 : null;
+                    course.start = type === 'Vacances' || type === 'Stage' ? '08:00' : document.getElementById('course-start').value;
+                    course.duration = type === 'Vacances' || type === 'Stage' ? 11 : parseFloat(document.getElementById('course-duration').value);
+                    course.room = type === 'Vacances' || type === 'Stage' ? '' : document.getElementById('course-room').value;
+                    course.repeating = isRepeating;
+                    course.repeatEnd = isRepeating ? document.getElementById('course-repeat-end').value : null;
+                    course.exceptions = isRepeating ? document.getElementById('course-exceptions').value : '';
+                }
+            } else {
+                const course = {
+                    id: 'c_' + Date.now(),
+                    type: type,
+                    subject: (type === 'Vacances' || type === 'Stage') ? type : document.getElementById('course-subject').value,
+                    date: document.getElementById('course-date').value,
+                    dateEnd: type === 'Vacances' ? (document.getElementById('course-date-end').value || document.getElementById('course-date').value) : null,
+                    stageWeeks: type === 'Stage' ? parseInt(document.getElementById('course-stage-weeks').value) || 1 : null,
+                    start: (type === 'Vacances' || type === 'Stage') ? '08:00' : document.getElementById('course-start').value,
+                    duration: (type === 'Vacances' || type === 'Stage') ? 11 : parseFloat(document.getElementById('course-duration').value),
+                    room: (type === 'Vacances' || type === 'Stage') ? '' : document.getElementById('course-room').value,
+                    repeating: isRepeating,
+                    repeatEnd: isRepeating ? document.getElementById('course-repeat-end').value : null,
+                    exceptions: isRepeating ? document.getElementById('course-exceptions').value : '',
+                    overrides: {}
+                };
+                appData.courses.push(course);
+            }
+
+            saveData();
+            closeModal('course-modal');
+        }
+
+        function saveTask(e) {
+            e.preventDefault();
+            const taskId = document.getElementById('task-id').value;
+            const subject = document.getElementById('task-subject').value;
+            const title = document.getElementById('task-title').value;
+            const date = document.getElementById('task-date').value;
+            const priority = document.getElementById('task-priority').value;
+
+            if (taskId) {
+                const task = appData.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.subject = subject;
+                    task.title = title;
+                    task.date = date;
+                    task.priority = priority;
+                }
+            } else {
+                const task = {
+                    id: 't_' + Date.now(),
+                    subject: subject,
+                    title: title,
+                    date: date,
+                    priority: priority,
+                    completed: false,
+                    isAuto: false
+                };
+                appData.tasks.push(task);
+            }
+            saveData();
+            closeModal('task-modal');
+        }
+
+        function toggleTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (task) { task.completed = !task.completed; saveData(); }
+        }
+
+        function deleteTask(id) {
+            appData.tasks = appData.tasks.filter(t => t.id !== id);
+            saveData();
+        }
+
+        function saveSubject(e) {
+            e.preventDefault();
+            const oldName = document.getElementById('subject-old-name').value;
+            const newName = document.getElementById('subject-name').value;
+            const newColor = document.getElementById('subject-color').value;
+
+            const autoTasksInputs = document.querySelectorAll('.auto-task-input');
+            let autoTasks = [];
+            autoTasksInputs.forEach(inp => {
+                if (inp.value.trim()) autoTasks.push(inp.value.trim());
+            });
+
+            if (oldName) {
+                const subj = appData.subjects.find(s => s.name === oldName);
+                if (subj) { subj.name = newName; subj.color = newColor; subj.autoTasks = autoTasks; }
+                appData.courses.forEach(c => { if(c.subject === oldName) c.subject = newName; });
+                appData.tasks.forEach(t => { if(t.subject === oldName) t.subject = newName; });
+            } else {
+                if (appData.subjects.some(s => s.name === newName)) { alert('Matière existante.'); return; }
+                appData.subjects.push({ name: newName, color: newColor, autoTasks: autoTasks });
+            }
+            saveData();
+            closeModal('subject-modal');
+        }
+
+        function deleteSubject(name) {
+            if (confirm(`Supprimer la matière "${name}" ?`)) {
+                appData.subjects = appData.subjects.filter(s => s.name !== name);
+                appData.courses = appData.courses.filter(c => c.subject !== name);
+                appData.tasks = appData.tasks.filter(t => t.subject !== name);
+                saveData();
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "mon_planning_sauvegarde.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.subjects && parsed.courses && parsed.tasks) {
+                        appData = parsed;
+                        saveData();
+                        alert('Import réussi !');
+                    } else { alert('Format invalide.'); }
+                } catch (err) { alert('Erreur lecture JSON.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderAll() {
+            updateSelects();
+            renderEdt();
+            renderTasks();
+            renderSubjects();
+            renderSettings();
+        }
+
+        generateTimeSlots();
+        populateTimeSelect();
+        updateDayLabel();
+        checkNotificationsStatus();
+        renderAll();
+
+        // Actualisation automatique toutes les 30 secondes pour vérifier les cours passés et injecter les tâches auto en temps réel
+        setInterval(() => {
+            syncAutoTasks();
+            if (currentTab === 'edt' || currentTab === 'tasks') {
+                renderAll();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
